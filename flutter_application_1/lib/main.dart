@@ -21,7 +21,6 @@ class BigDataApp extends StatelessWidget {
   }
 }
 
-// İŞTE KAZARA SİLİNEN KISIM BURASIYDI
 class TrendEkrani extends StatefulWidget {
   const TrendEkrani({Key? key}) : super(key: key);
 
@@ -36,8 +35,8 @@ class _TrendEkraniState extends State<TrendEkrani> {
   bool isLoading = true;
   String seciliFiltre = 'Tümü';
 
-  final String apiUrl = "http://10.0.2.2:8000/api/v1/trendler/Teknoloji";
-  final String kelimeBulutuUrl = "http://10.0.2.2:8000/api/v1/kelime-bulutu/";
+  final String apiUrl = "https://dijital-istihbarat-sistemi.onrender.com/api/v1/trendler/Teknoloji";
+  final String kelimeBulutuUrl = "https://dijital-istihbarat-sistemi.onrender.com/api/v1/kelime-bulutu/";
 
   int pozitifSayisi = 0;
   int negatifSayisi = 0;
@@ -53,23 +52,60 @@ class _TrendEkraniState extends State<TrendEkrani> {
   Future<void> verileriCek() async {
     setState(() { isLoading = true; });
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      final bulutResponse = await http.get(Uri.parse(kelimeBulutuUrl));
+      print("API İsteği Başlıyor: $apiUrl");
+      
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {"Accept": "application/json"},
+      ).timeout(const Duration(seconds: 60));
+      
+      print("API İsteği Bitti. Durum Kodu: ${response.statusCode}");
+      print("Gelen Ham Veri: ${response.body}");
+
+      final bulutResponse = await http.get(
+        Uri.parse(kelimeBulutuUrl),
+        headers: {"Accept": "application/json"},
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
-        tumVeriler = json.decode(utf8.decode(response.bodyBytes));
+        tumVeriler = json.decode(response.body); 
         istatistikleriHesapla();
         filtreUygula('Tümü');
+      } else {
+        throw Exception("Trendler API Hatası: ${response.statusCode}");
       }
       
       if (bulutResponse.statusCode == 200) {
-        kelimeBulutuVerisi = json.decode(utf8.decode(bulutResponse.bodyBytes));
+        kelimeBulutuVerisi = json.decode(bulutResponse.body);
+      } else {
+        throw Exception("Kelime Bulutu API Hatası: ${bulutResponse.statusCode}");
       }
 
-      setState(() { isLoading = false; });
     } catch (e) {
-      print("Hata: $e");
-      setState(() { isLoading = false; });
+      print("!!! YAKALANAN HATA !!! : $e");
+      
+      if (mounted) {
+        setState(() {
+          tumVeriler = [
+            {"icerik": "Uygulama çöktü sandık ama UI sağlammış.", "platform": "X", "duygu_skoru": 0.5, "duygu_durumu": "Pozitif"},
+            {"icerik": "Bağlantı hatası var, çözülecek.", "platform": "Telegram", "duygu_skoru": -0.8, "duygu_durumu": "Negatif"}
+          ];
+          kelimeBulutuVerisi = [
+            {"kelime": "Bağlantı", "frekans": 100},
+            {"kelime": "Hata", "frekans": 50}
+          ];
+          istatistikleriHesapla();
+          filtreUygula('Tümü');
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Veri çekilemedi, sahte veri yüklendi. Hata: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() { isLoading = false; });
+      }
     }
   }
 
@@ -278,7 +314,7 @@ class _TrendEkraniState extends State<TrendEkrani> {
   }
 
   Widget _veriKartiOlustur(dynamic veri) {
-    double skor = veri['duygu_skoru'];
+    double skor = (veri['duygu_skoru'] as num).toDouble();
     Color durumRengi = skor > 0 ? Colors.green : (skor < 0 ? Colors.red : Colors.grey);
     return Card(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), elevation: 0, color: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)), child: ListTile(leading: CircleAvatar(backgroundColor: durumRengi.withOpacity(0.1), child: Text(veri['platform'].toString().substring(0, 1), style: TextStyle(fontWeight: FontWeight.bold, color: durumRengi))), title: Text(veri['icerik'], style: const TextStyle(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis), subtitle: Padding(padding: const EdgeInsets.only(top: 8.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Kaynak: ${veri['platform']}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.indigo.shade300)), Text("Skor: $skor", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: durumRengi))]))));
   }
