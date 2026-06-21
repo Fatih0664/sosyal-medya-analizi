@@ -224,3 +224,4 @@ xxhash==3.7.0
 yarl==1.24.2
 yt-dlp==2026.6.9
 zstandard==0.25.0
+flask
