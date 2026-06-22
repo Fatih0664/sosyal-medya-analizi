@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ sayfa_basligi }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1 style="margin: 0;">📊 {{ sayfa_basligi }}</h1>
+        <p style="margin-top: 10px; opacity: 0.9;">Gerçek Zamanlı Dijital İstihbarat ve Veri Akışı</p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top: 0; color: #2c3e50;">Sistem Durumu</h3>
+        <p>✅ Web Sunucusu: <b>Aktif</b></p>
+        <p>🔌 Veritabanı Bağlantısı: <b>{{ baglanti_durumu }}</b></p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top: 0; color: #2c3e50;">Canlı Veri Akışı (Son Kayıtlar)</h3>
+        <ul class="data-list">
+            {% for satir in veriler %}
+                <li>
+                    <span class="platform-badge 
+                        {% if satir['platform'] == 'X/Twitter' %}x-twitter{% endif %}
+                        {% if satir['platform'] == 'Instagram' %}instagram{% endif %}">
+                        {% if satir['platform'] == 'TikTok' %}tiktok{% endif %}">
+                        {% if satir['platform'] == 'YouTube' %}youtube{% endif %}">
+                        {{ satir['platform'] }}
+                    </span>
+                    {{ satir['icerik'] }}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>

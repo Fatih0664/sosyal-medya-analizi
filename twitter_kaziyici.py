@@ -3,6 +3,30 @@ from selenium.webdriver.common.by import By
 import time
 import os
 import pandas as pd
+import sqlite3 # Veritabanı işlemleri için eklendi
+
+# Veritabanına bağlanıp verileri kaydeden fonksiyon
+def veritabanina_kaydet(veriler_listesi):
+    conn = sqlite3.connect('turkiye_veri_agi.db')
+    cursor = conn.cursor()
+    
+    eklenen_sayi = 0
+    for veri in veriler_listesi:
+        # Tarih ve etkileşimi kaybetmemek için içerik metninin içine şıkça gömüyoruz
+        zengin_icerik = f"[{veri['tarih']}] {veri['metin']} (Beğeni: {veri['etkilesim']})"
+        
+        # Veritabanında aynı metin var mı diye kontrol et (Çift kaydı önlemek için)
+        cursor.execute("SELECT id FROM sosyal_medya_akis WHERE icerik = ?", (zengin_icerik,))
+        if not cursor.fetchone():
+            cursor.execute('''
+                INSERT INTO sosyal_medya_akis (platform, icerik)
+                VALUES (?, ?)
+            ''', (veri['platform'], zengin_icerik))
+            eklenen_sayi += 1
+            
+    conn.commit()
+    conn.close()
+    return eklenen_sayi
 
 def nihai_twitter_kaziyici(hedef_hesap="webtekno", hedef_tweet_sayisi=50):
     print("🚀 X (Twitter) Nihai Kazıcı başlatılıyor...")
@@ -59,8 +83,8 @@ def nihai_twitter_kaziyici(hedef_hesap="webtekno", hedef_tweet_sayisi=50):
                     if tweet_metin:
                         gonderiler[tweet_metin] = {
                             'tarih': tweet_tarih,
-                            'platform': 'Twitter/X',
-                            'metin': tweet_metin.replace('\n', ' ')[:80] + "...", 
+                            'platform': 'X/Twitter', # İsmi dashboard için güncelledik
+                            'metin': tweet_metin.replace('\n', ' '), # Metni kesmeden tamamını alıyoruz
                             'etkilesim': tweet_etkilesim
                         }
                         print(f"[{len(gonderiler)}/{hedef_tweet_sayisi}] Yeni tweet yakalandı.")
@@ -74,14 +98,15 @@ def nihai_twitter_kaziyici(hedef_hesap="webtekno", hedef_tweet_sayisi=50):
             if len(gonderiler) >= hedef_tweet_sayisi:
                 break
             
-            # --- 2. HİLE: HEDEFE KİLİTLİ KAYDIRMA ---
-            if tweet_elementleri:
-                # Ekranda yüklenmiş olan EN SON tweeti bul ve tam olarak onun üzerine kaydır
-                son_tweet = tweet_elementleri[-1]
-                driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'end'});", son_tweet)
-                time.sleep(3) # Yeni tweetlerin gelmesi için bekle
-            
-            # Eğer yeni tweet eklenmediyse durma sayacını artır
+            # --- 2. HİLE: GÜVENLİ KAYDIRMA ---
+            try:
+                # Belirli bir tweete tutunmak yerine doğrudan pencereyi aşağı kaydırıyoruz
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(3.5) # Twitter'ın yeni verileri yüklemesi için zaman veriyoruz
+            except Exception as e:
+                print(f"Kaydırma sırasında küçük bir takılma: {e}")
+                
+            # Eğer yeni tweet eklenmediyse durma sayacını artır (Sonsuz döngüyü engellemek için)
             if len(gonderiler) == baslangic_sayisi:
                 durma_sayaci += 1
                 print("Yeni tweet yüklenmesi bekleniyor...")
@@ -89,15 +114,19 @@ def nihai_twitter_kaziyici(hedef_hesap="webtekno", hedef_tweet_sayisi=50):
             else:
                 durma_sayaci = 0
                 
-        print("\n--- PANDAS İLE KAYIT ---")
+        print("\n--- VERİTABANINA KAYIT ---")
         if gonderiler:
-            df = pd.DataFrame(gonderiler.values())
-            dosya_adi = f"twitter_{hedef_hesap}_verisi_genis.csv"
-            df.to_csv(dosya_adi, index=False, encoding='utf-8-sig')
+            veriler_listesi = list(gonderiler.values())
             
-            print("\n--- ÇEKİLEN VERİNİN İLK 5 SATIRI ---")
-            print(df.head())
-            print(f"\n🎉 Zafer! Toplam {len(gonderiler)} tweet '{dosya_adi}' dosyasına kaydedildi!")
+            # Veritabanına kaydetme fonksiyonunu çağırıyoruz
+            eklenen_kayit = veritabanina_kaydet(veriler_listesi)
+            
+            # İsteğe bağlı olarak CSV yedeğini de tutmaya devam ediyoruz (Opsiyonel ama güvenli)
+            df = pd.DataFrame(veriler_listesi)
+            df.to_csv(f"twitter_{hedef_hesap}_yedek.csv", index=False, encoding='utf-8-sig')
+            
+            print(f"\n🎉 Zafer! Toplam {len(gonderiler)} tweet çekildi.")
+            print(f"💾 {eklenen_kayit} yeni tweet veritabanına eklendi (Zaten var olanlar atlandı).")
         else:
             print("❌ Hiç tweet toplanamadı.")
             

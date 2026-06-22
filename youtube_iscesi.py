@@ -1,12 +1,26 @@
 from playwright.sync_api import sync_playwright
-import requests
-import time
+import sqlite3
 from textblob import TextBlob
 
-API_URL = "http://127.0.0.1:8000/api/v1/veri-gonder/"
+# Veritabanına bağlanıp verileri kaydeden fonksiyon
+def veritabanina_kaydet(veriler_listesi):
+    conn = sqlite3.connect('turkiye_veri_agi.db')
+    cursor = conn.cursor()
+    eklenen_sayi = 0
+    for veri in veriler_listesi:
+        # İstatistiksel duygu durumunu da içeriğe ekleyerek zenginleştiriyoruz
+        zengin_icerik = f"[{veri['duygu_durumu']}] {veri['icerik']} (Duygu Skoru: {veri['duygu_skoru']})"
+        
+        cursor.execute("SELECT id FROM sosyal_medya_akis WHERE icerik = ?", (zengin_icerik,))
+        if not cursor.fetchone():
+            cursor.execute('INSERT INTO sosyal_medya_akis (platform, icerik) VALUES (?, ?)', 
+                           (veri['platform'], zengin_icerik))
+            eklenen_sayi += 1
+    conn.commit()
+    conn.close()
+    return eklenen_sayi
 
 def duygu_hesapla(metin):
-    # İstatistikçi kimliğin için duygu analizi motoru
     skor = TextBlob(str(metin)).sentiment.polarity
     if skor > 0.1: return "Pozitif 🟢", round(skor, 2)
     elif skor < -0.1: return "Negatif 🔴", round(skor, 2)
@@ -14,55 +28,43 @@ def duygu_hesapla(metin):
 
 def youtube_kaziyici(anahtar_kelime):
     print(f"📺 YouTube Botu Göreve Başladı: '{anahtar_kelime}' aranıyor...")
+    veriler = []
+    
     with sync_playwright() as p:
-        # YouTube botları kolay yakalar, bu yüzden 'stealth' benzeri ayarlar yapıyoruz
-        browser = p.chromium.launch(headless=False) # İzlemek istersen True yapabilirsin
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
+        browser = p.chromium.launch(headless=True) # Arka planda çalışması daha verimli
+        page = browser.new_page()
 
         try:
-            # YouTube arama sonuçları sayfasına git
             search_url = f"https://www.youtube.com/results?search_query={anahtar_kelime}"
             page.goto(search_url, wait_until="networkidle")
             
-            # YouTube "Tembel Yükleme" (Lazy Load) yaptığı için sayfayı biraz aşağı kaydırıyoruz
-            print("⏳ YouTube sonuçları taranıyor...")
+            # YouTube sonuçlarını aşağı kaydır
             for _ in range(2):
                 page.mouse.wheel(0, 1500)
                 page.wait_for_timeout(2000)
 
-            # Video başlıklarını içeren etiketleri yakala (ytd-video-renderer içindeki #video-title)
             videolar = page.query_selector_all("a#video-title")
             
-            basarili = 0
-            for v in videolar[:20]: # İlk 20 video sonucunu al
+            for v in videolar[:20]:
                 baslik = v.get_attribute("title")
                 if baslik and len(baslik) > 10:
                     durum, skor = duygu_hesapla(baslik)
-                    
-                    paket = {
+                    veriler.append({
                         "platform": "YouTube",
-                        "kategori": "Akademik/Teknoloji", # Vizyonuna göre kategori dinamik olabilir
                         "icerik": baslik,
                         "duygu_durumu": durum,
                         "duygu_skoru": skor
-                    }
-                    
-                    # Veriyi merkeze (FastAPI) ateşle
-                    res = requests.post(API_URL, json=paket)
-                    if res.status_code == 201:
-                        basarili += 1
-                        print(f"✅ YT'den çekildi: {baslik[:50]}...")
+                    })
+                    print(f"✅ YT'den çekildi: {baslik[:40]}...")
             
-            print(f"\n🎉 YouTube görevi tamamlandı. API'ye {basarili} yeni veri aktarıldı.")
-
+            if veriler:
+                eklenen = veritabanina_kaydet(veriler)
+                print(f"\n🎉 YouTube görevi tamamlandı. Veritabanına {eklenen} yeni veri eklendi.")
+            
         except Exception as e:
             print(f"YouTube Botu bir engelle karşılaştı: {e}")
         finally:
             browser.close()
 
 if __name__ == "__main__":
-    # Senin büyük vizyonun için önemli anahtar kelimeler
     youtube_kaziyici("yapay zeka gelecek araştırmaları")
