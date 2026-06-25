@@ -4,3 +4,5 @@ ddgs
 pandas
 textblob
 streamlit
+matplotlib
+wordcloud
