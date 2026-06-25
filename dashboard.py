@@ -172,7 +172,6 @@ supabase = init_connection()
 def veri_getir():
     if supabase is None: return pd.DataFrame()
     try:
-        # LİMİTİ 500'DEN 5000'E ÇIKARDIK
         response = supabase.table("sosyal_medya_akis").select("*").order("created_at", desc=True).limit(5000).execute()
         df = pd.DataFrame(response.data)
         if not df.empty and 'created_at' in df.columns:
@@ -233,7 +232,10 @@ if not df.empty:
         
         with grafik_kolon1:
             st.subheader(lang["chart_plat"])
-            st.bar_chart(filtrelenmis_df['platform'].value_counts())
+            # İŞTE SENİN İSTEDİĞİN ZORUNLU 10 PLATFORM ÇİVİLEMESİ BURADA!
+            platform_sayilari = filtrelenmis_df['platform'].value_counts()
+            platform_sayilari = platform_sayilari.reindex(TUM_PLATFORMLAR, fill_value=0)
+            st.bar_chart(platform_sayilari)
             
         with grafik_kolon2:
             st.subheader(lang["chart_cat"])
