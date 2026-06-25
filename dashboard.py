@@ -12,14 +12,15 @@ DIL_SECENEKLERI = {
     "Türkçe": {
         "title": "Web ve Sosyal Medya Analizi",
         "lang_select": "🌐 Dil Seçimi / Language",
-        "plat_select": "🔍 Platform Seçin:",
-        "cat_select": "📂 Kategori Seçin:",
+        "plat_select": "🌍 Tüm Platformlar",
+        "cat_select": "📂 Konu Seçin",
+        "country_select": "🗺️ Tüm Dünya (Ülke Seçin)",
         "total": "📌 Toplam Çekilen Veri",
         "pos": "🟢 Pozitif İçerik",
         "neg": "🔴 Negatif İçerik",
         "neu": "⚪ Nötr İçerik",
         "chart_plat": "📊 Platform Dağılımı",
-        "chart_emo": "🎯 Duygu Dağılımı (Pasta Grafik)",
+        "chart_emo": "🎯 Duygu Dağılımı",
         "wordcloud": "☁️ En Çok Geçen Kelimeler",
         "table": "🔍 Filtrelenmiş Canlı Veriler",
         "download": "📥 Bu Tabloyu Excel Olarak İndir",
@@ -29,9 +30,10 @@ DIL_SECENEKLERI = {
     "English": {
         "title": "Web and Social Media Analysis",
         "lang_select": "🌐 Language",
-        "plat_select": "🔍 Select Platform:",
-        "cat_select": "📂 Select Category:",
-        "total": "📌 Total Extracted Data",
+        "plat_select": "🌍 All Platforms",
+        "cat_select": "📂 Select Topic",
+        "country_select": "🗺️ Whole World (Select Country)",
+        "total": "📌 Total Data",
         "pos": "🟢 Positive Content",
         "neg": "🔴 Negative Content",
         "neu": "⚪ Neutral Content",
@@ -39,15 +41,16 @@ DIL_SECENEKLERI = {
         "chart_emo": "🎯 Sentiment Distribution",
         "wordcloud": "☁️ Most Frequent Words",
         "table": "🔍 Filtered Live Data",
-        "download": "📥 Download Table as Excel",
+        "download": "📥 Download as Excel",
         "no_filter": "No data found for the selected filters.",
         "no_data": "No data in the database yet."
     },
     "Deutsch": {
         "title": "Web- und Social-Media-Analyse",
         "lang_select": "🌐 Sprache",
-        "plat_select": "🔍 Plattform wählen:",
-        "cat_select": "📂 Kategorie wählen:",
+        "plat_select": "🌍 Alle Plattformen",
+        "cat_select": "📂 Thema wählen",
+        "country_select": "🗺️ Ganze Welt (Land wählen)",
         "total": "📌 Gesamtdaten",
         "pos": "🟢 Positiver Inhalt",
         "neg": "🔴 Negativer Inhalt",
@@ -63,58 +66,62 @@ DIL_SECENEKLERI = {
     "Français": {
         "title": "Analyse du Web et des Réseaux Sociaux",
         "lang_select": "🌐 Langue",
-        "plat_select": "🔍 Choisir la plateforme:",
-        "cat_select": "📂 Choisir la catégorie:",
+        "plat_select": "🌍 Toutes les plateformes",
+        "cat_select": "📂 Choisir le sujet",
+        "country_select": "🗺️ Monde entier (Choisir le pays)",
         "total": "📌 Données Totales",
         "pos": "🟢 Contenu Positif",
         "neg": "🔴 Contenu Négatif",
         "neu": "⚪ Contenu Neutre",
-        "chart_plat": "📊 Distribution des Plateformes",
-        "chart_emo": "🎯 Distribution des Sentiments",
+        "chart_plat": "📊 Distribution",
+        "chart_emo": "🎯 Sentiments",
         "wordcloud": "☁️ Mots les plus fréquents",
-        "table": "🔍 Données en direct filtrées",
+        "table": "🔍 Données filtrées",
         "download": "📥 Télécharger en Excel",
-        "no_filter": "Aucune donnée trouvée pour ces filtres.",
-        "no_data": "Aucune donnée dans la base de données."
+        "no_filter": "Aucune donnée trouvée.",
+        "no_data": "Aucune donnée dans la base."
     },
     "中文": {
         "title": "网络和社交媒体分析",
         "lang_select": "🌐 语言",
-        "plat_select": "🔍 选择平台：",
-        "cat_select": "📂 选择类别：",
-        "total": "📌 提取的数据总数",
+        "plat_select": "🌍 所有平台",
+        "cat_select": "📂 选择主题",
+        "country_select": "🗺️ 全世界 (选择国家)",
+        "total": "📌 总数据",
         "pos": "🟢 正面内容",
         "neg": "🔴 负面内容",
         "neu": "⚪ 中立内容",
         "chart_plat": "📊 平台分布",
         "chart_emo": "🎯 情绪分布",
-        "wordcloud": "☁️ 最常出现的词",
-        "table": "🔍 过滤后的实时数据",
-        "download": "📥 下载为 Excel 表格",
-        "no_filter": "未找到符合所选过滤器的数据。",
-        "no_data": "数据库中尚无数据。"
+        "wordcloud": "☁️ 常用词",
+        "table": "🔍 过滤后的数据",
+        "download": "📥 下载为 Excel",
+        "no_filter": "未找到数据。",
+        "no_data": "尚无数据。"
     },
     "العربية": {
         "title": "تحليل الويب ووسائل التواصل الاجتماعي",
         "lang_select": "🌐 اللغة",
-        "plat_select": "🔍 اختر المنصة:",
-        "cat_select": "📂 اختر الفئة:",
-        "total": "📌 إجمالي البيانات المستخرجة",
+        "plat_select": "🌍 جميع المنصات",
+        "cat_select": "📂 اختر الموضوع",
+        "country_select": "🗺️ جميع أنحاء العالم (اختر الدولة)",
+        "total": "📌 إجمالي البيانات",
         "pos": "🟢 محتوى إيجابي",
         "neg": "🔴 محتوى سلبي",
         "neu": "⚪ محتوى محايد",
         "chart_plat": "📊 توزيع المنصات",
         "chart_emo": "🎯 توزيع المشاعر",
-        "wordcloud": "☁️ الكلمات الأكثر تكراراً",
-        "table": "🔍 البيانات الحية المفلترة",
-        "download": "📥 تحميل كملف Excel",
-        "no_filter": "لم يتم العثور على بيانات تطابق الفلاتر.",
-        "no_data": "لا توجد بيانات جديدة في قاعدة البيانات."
+        "wordcloud": "☁️ الكلمات الشائعة",
+        "table": "🔍 البيانات المفلترة",
+        "download": "📥 تحميل Excel",
+        "no_filter": "لم يتم العثور على بيانات.",
+        "no_data": "لا توجد بيانات."
     }
 }
 
-# 10 Sabit Platform
+# Sabit Listeler
 TUM_PLATFORMLAR = ["Google", "Bing", "Yahoo", "Facebook", "YouTube", "X (Twitter)", "Telegram", "Instagram", "TikTok", "WhatsApp"]
+ULKELER = ["Türkiye", "ABD", "Almanya", "İngiltere", "Fransa", "Rusya", "Çin", "Japonya", "Güney Kore", "İtalya", "Brezilya", "Hindistan", "Mısır", "Suudi Arabistan"]
 
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="Web ve Sosyal Medya Analizi", page_icon="🌍", layout="wide")
@@ -146,6 +153,11 @@ def veri_getir():
         df = pd.DataFrame(response.data)
         if not df.empty and 'created_at' in df.columns:
             df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Veritabanında ülke sütunu olmadığı için şimdilik görsel amaçlı varsayılan ülke ekliyoruz
+            if 'ulke' not in df.columns:
+                df['ulke'] = "Türkiye"
+                
         return df
     except:
         return pd.DataFrame()
@@ -156,7 +168,12 @@ if not df.empty:
     # --- YAN MENÜ (FİLTRELEME) ---
     st.sidebar.markdown("---")
     
-    # Tüm 10 platformu sabit olarak gösteriyoruz
+    secilen_ulkeler = st.sidebar.multiselect(
+        lang["country_select"],
+        options=ULKELER,
+        default=["Türkiye"]
+    )
+
     secilen_platformlar = st.sidebar.multiselect(
         lang["plat_select"],
         options=TUM_PLATFORMLAR,
@@ -171,7 +188,8 @@ if not df.empty:
     
     filtrelenmis_df = df[
         (df['platform'].isin(secilen_platformlar)) & 
-        (df['kategori'].isin(secilen_kategoriler))
+        (df['kategori'].isin(secilen_kategoriler)) &
+        (df['ulke'].isin(secilen_ulkeler))
     ]
     
     if filtrelenmis_df.empty:
@@ -218,11 +236,11 @@ if not df.empty:
 
         st.markdown("---")
         
-        # --- Tablo ve Gerçek Excel (.xlsx) İndirme ---
+        # --- Tablo ve Excel ---
         st.subheader(lang["table"])
-        st.dataframe(filtrelenmis_df[['created_at', 'platform', 'kategori', 'duygu_durumu', 'duygu_skoru', 'icerik']], use_container_width=True)
+        # Gösterilecek sütunlara "ulke" de eklendi
+        st.dataframe(filtrelenmis_df[['created_at', 'ulke', 'platform', 'kategori', 'duygu_durumu', 'duygu_skoru', 'icerik']], use_container_width=True)
         
-        # Gerçek Excel Dosyası Oluşturma (openpyxl)
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             filtrelenmis_df.to_excel(writer, index=False, sheet_name='Analiz Verileri')
