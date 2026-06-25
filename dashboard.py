@@ -23,7 +23,8 @@ DIL_SECENEKLERI = {
         "neg": "🔴 Negatif İçerik",
         "neu": "⚪ Nötr İçerik",
         "chart_plat": "📊 Platform Dağılımı",
-        "chart_emo": "🎯 Duygu Dağılımı (Pasta Grafik)",
+        "chart_cat": "📂 Konu Dağılımı",
+        "chart_emo": "🎯 Duygu Dağılımı",
         "wordcloud": "☁️ En Çok Geçen Kelimeler",
         "table": "🔍 Filtrelenmiş Canlı Veriler",
         "download": "📥 Bu Tabloyu Excel Olarak İndir",
@@ -44,6 +45,7 @@ DIL_SECENEKLERI = {
         "neg": "🔴 Negative Content",
         "neu": "⚪ Neutral Content",
         "chart_plat": "📊 Platform Distribution",
+        "chart_cat": "📂 Topic Distribution",
         "chart_emo": "🎯 Sentiment Distribution",
         "wordcloud": "☁️ Most Frequent Words",
         "table": "🔍 Filtered Live Data",
@@ -65,6 +67,7 @@ DIL_SECENEKLERI = {
         "neg": "🔴 Negativer Inhalt",
         "neu": "⚪ Neutraler Inhalt",
         "chart_plat": "📊 Plattformverteilung",
+        "chart_cat": "📂 Themenverteilung",
         "chart_emo": "🎯 Stimmungsverteilung",
         "wordcloud": "☁️ Häufigste Wörter",
         "table": "🔍 Gefilterte Live-Daten",
@@ -86,6 +89,7 @@ DIL_SECENEKLERI = {
         "neg": "🔴 Contenu Négatif",
         "neu": "⚪ Contenu Neutre",
         "chart_plat": "📊 Distribution des Plateformes",
+        "chart_cat": "📂 Distribution des Sujets",
         "chart_emo": "🎯 Distribution des Sentiments",
         "wordcloud": "☁️ Mots les plus fréquents",
         "table": "🔍 Données en direct filtrées",
@@ -107,6 +111,7 @@ DIL_SECENEKLERI = {
         "neg": "🔴 负面内容",
         "neu": "⚪ 中立内容",
         "chart_plat": "📊 平台分布",
+        "chart_cat": "📂 主题分布",
         "chart_emo": "🎯 情绪分布",
         "wordcloud": "☁️ 最常出现的词",
         "table": "🔍 过滤后的实时数据",
@@ -128,6 +133,7 @@ DIL_SECENEKLERI = {
         "neg": "🔴 محتوى سلبي",
         "neu": "⚪ محتوى محايد",
         "chart_plat": "📊 توزيع المنصات",
+        "chart_cat": "📂 توزيع المواضيع",
         "chart_emo": "🎯 توزيع المشاعر",
         "wordcloud": "☁️ الكلمات الأكثر تكراراً",
         "table": "🔍 البيانات الحية المفلترة",
@@ -144,7 +150,6 @@ ULKELER = ["Türkiye", "ABD", "Almanya", "İngiltere", "Fransa", "Rusya", "Çin"
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="Web ve Sosyal Medya Analizi", page_icon="🌍", layout="wide")
 
-# YAN MENÜ: Dil Seçimi
 secilen_dil = st.sidebar.selectbox("🌐 Dil Seçimi / Language", options=list(DIL_SECENEKLERI.keys()))
 lang = DIL_SECENEKLERI[secilen_dil]
 
@@ -167,7 +172,8 @@ supabase = init_connection()
 def veri_getir():
     if supabase is None: return pd.DataFrame()
     try:
-        response = supabase.table("sosyal_medya_akis").select("*").order("created_at", desc=True).limit(500).execute()
+        # LİMİTİ 500'DEN 5000'E ÇIKARDIK
+        response = supabase.table("sosyal_medya_akis").select("*").order("created_at", desc=True).limit(5000).execute()
         df = pd.DataFrame(response.data)
         if not df.empty and 'created_at' in df.columns:
             df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -183,8 +189,6 @@ df = veri_getir()
 
 if not df.empty:
     st.sidebar.markdown("---")
-    
-    # --- TEMİZ AÇILIR MENÜLER (SELECTBOX) ---
     
     # Ülke Menüsü
     ulke_secenekleri = [lang["all_countries"]] + ULKELER
@@ -224,6 +228,7 @@ if not df.empty:
         
         st.markdown("---")
         
+        # 1. SATIR GRAFİKLERİ: Platform ve Kategori
         grafik_kolon1, grafik_kolon2 = st.columns(2)
         
         with grafik_kolon1:
@@ -231,6 +236,15 @@ if not df.empty:
             st.bar_chart(filtrelenmis_df['platform'].value_counts())
             
         with grafik_kolon2:
+            st.subheader(lang["chart_cat"])
+            st.bar_chart(filtrelenmis_df['kategori'].value_counts())
+            
+        st.markdown("---")
+        
+        # 2. SATIR GRAFİKLERİ: Duygu ve Kelime Bulutu
+        grafik_kolon3, grafik_kolon4 = st.columns(2)
+        
+        with grafik_kolon3:
             st.subheader(lang["chart_emo"])
             duygu_sayilari = filtrelenmis_df['duygu_durumu'].value_counts()
             fig, ax = plt.subplots(figsize=(5, 5))
@@ -239,16 +253,15 @@ if not df.empty:
             ax.axis('equal') 
             st.pyplot(fig)
             
-        st.markdown("---")
-        
-        st.subheader(lang["wordcloud"])
-        tum_metin = " ".join(filtrelenmis_df['icerik'].dropna().astype(str).tolist())
-        if len(tum_metin) > 20:
-            wordcloud = WordCloud(width=800, height=300, background_color="white", max_words=100, colormap="viridis").generate(tum_metin)
-            fig_wc, ax_wc = plt.subplots(figsize=(10, 5))
-            ax_wc.imshow(wordcloud, interpolation="bilinear")
-            ax_wc.axis("off")
-            st.pyplot(fig_wc)
+        with grafik_kolon4:
+            st.subheader(lang["wordcloud"])
+            tum_metin = " ".join(filtrelenmis_df['icerik'].dropna().astype(str).tolist())
+            if len(tum_metin) > 20:
+                wordcloud = WordCloud(width=800, height=300, background_color="white", max_words=100, colormap="viridis").generate(tum_metin)
+                fig_wc, ax_wc = plt.subplots(figsize=(10, 5))
+                ax_wc.imshow(wordcloud, interpolation="bilinear")
+                ax_wc.axis("off")
+                st.pyplot(fig_wc)
 
         st.markdown("---")
         
