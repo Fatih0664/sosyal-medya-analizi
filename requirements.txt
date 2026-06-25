@@ -6,3 +6,4 @@ textblob
 streamlit
 matplotlib
 wordcloud
+openpyxl
