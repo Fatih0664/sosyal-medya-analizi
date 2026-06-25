@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "🟢 MEGA KAZIYICI BOT AYAKTA! Veri toplamaya devam ediyor..."
+    return "🟢 MEGA KAZIYICI BOT AYAKTA! Küresel veri toplamaya devam ediyor..."
 
 # --- SUPABASE AYARLARI ---
 SUPABASE_URL = "https://oskhluimvjvjhbtjqnoo.supabase.co"
@@ -32,8 +32,9 @@ except Exception as e:
 
 def hizli_duygu_analizi(metin):
     metin = str(metin).lower()
-    pozitif_kelimeler = ['iyi', 'güzel', 'harika', 'başarılı', 'süper', 'muhteşem', 'artış', 'büyüme', 'kâr', 'fırsat', 'çözüm', 'destek', 'seviyorum', 'tebrik']
-    negatif_kelimeler = ['kötü', 'berbat', 'sorun', 'hata', 'kriz', 'düşüş', 'zarar', 'zam', 'enflasyon', 'işsizlik', 'felaket', 'çöküş', 'şikayet', 'nefret']
+    # Küresel duygu kelimeleri (TR, EN, DE, FR, ES)
+    pozitif_kelimeler = ['iyi', 'güzel', 'harika', 'başarılı', 'artış', 'kâr', 'fırsat', 'good', 'great', 'success', 'profit', 'gut', 'bon', 'bien', 'bueno']
+    negatif_kelimeler = ['kötü', 'berbat', 'sorun', 'hata', 'kriz', 'zarar', 'enflasyon', 'bad', 'terrible', 'crisis', 'loss', 'inflation', 'schlecht', 'mal']
     
     pozitif_skor = sum(1 for kelime in pozitif_kelimeler if kelime in metin)
     negatif_skor = sum(1 for kelime in negatif_kelimeler if kelime in metin)
@@ -50,12 +51,13 @@ def hizli_duygu_analizi(metin):
         
     return skor, durum
 
-def veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime):
+def veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime, ulke):
     duygu_skoru, duygu_durumu = hizli_duygu_analizi(icerik)
     
     veri = {
         "platform": platform_adi,
         "kategori": kategori,
+        "ulke": ulke,
         "icerik": icerik,
         "duygu_skoru": duygu_skoru,
         "duygu_durumu": duygu_durumu,
@@ -64,7 +66,7 @@ def veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime):
     
     try:
         supabase.table("sosyal_medya_akis").insert(veri).execute()
-        print(f"✅ [KAYDEDİLDİ] Platform: {platform_adi} | Skor: {duygu_skoru}")
+        print(f"✅ [KAYDEDİLDİ] {ulke} | {platform_adi} | Skor: {duygu_skoru}")
     except Exception as e:
         print(f"❌ [HATA - VERİTABANI] Veri kaydedilemedi: {e}")
 
@@ -91,8 +93,10 @@ def platform_kaziyici_islem(worker_id, kuyruk):
             anahtar_kelime = gorev['kelime']
             platform_adi = gorev['platform']
             kategori = gorev['kategori']
+            ulke = gorev['ulke']
+            region_kodu = gorev['region']
             
-            print(f"🔍 [Worker-{worker_id}] Aranıyor: {platform_adi} -> '{anahtar_kelime}'")
+            print(f"🔍 [Worker-{worker_id}] Aranıyor: {ulke} -> {platform_adi} -> '{anahtar_kelime}'")
             
             try:
                 ddgs_kwargs = {}
@@ -100,17 +104,17 @@ def platform_kaziyici_islem(worker_id, kuyruk):
                     ddgs_kwargs['proxy'] = random.choice(PROXY_LISTESI)
                 
                 with DDGS(**ddgs_kwargs) as ddgs:
-                    # EĞER PLATFORM ARAMA MOTORUYSA 'site:' KISITLAMASI YAPMA!
                     if platform_adi in ["Google", "Bing", "Yahoo"]:
-                        arama_sorgusu = f"{anahtar_kelime} haberler" 
+                        arama_sorgusu = f"{anahtar_kelime} news" 
                     else:
                         hedef_domain = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])[0]
                         arama_sorgusu = f"{anahtar_kelime} site:{hedef_domain}"
                     
-                    sonuclar = list(ddgs.text(arama_sorgusu, max_results=15))
+                    # Arama motoruna lokasyon bilgisi (region) gönderiliyor
+                    sonuclar = list(ddgs.text(arama_sorgusu, region=region_kodu, max_results=15))
                     
                     if not sonuclar:
-                        print(f"🛑 [Worker-{worker_id}] 0 Sonuç! ({platform_adi})")
+                        print(f"🛑 [Worker-{worker_id}] 0 Sonuç! ({ulke} - {platform_adi})")
                     else:
                         bulunan_sayi = 0
                         gecerli_domainler = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])
@@ -119,17 +123,16 @@ def platform_kaziyici_islem(worker_id, kuyruk):
                             icerik = f"{sonuc.get('title', '')} - {sonuc.get('body', '')}"
                             href = str(sonuc.get('href', '')).lower()
                             
-                            # Arama motorları için her linki geçerli say
                             if platform_adi in ["Google", "Bing", "Yahoo"]:
                                 domain_dogru_mu = True
                             else:
                                 domain_dogru_mu = any(dom in href for dom in gecerli_domainler)
                             
                             if len(icerik) > 20 and domain_dogru_mu: 
-                                veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime)
+                                veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime, ulke)
                                 bulunan_sayi += 1
                                 
-                        print(f"🎯 [Worker-{worker_id}] GÖREV BİTTİ: '{anahtar_kelime}' -> {bulunan_sayi} adet veri çekildi. ({platform_adi})")
+                        print(f"🎯 [Worker-{worker_id}] GÖREV BİTTİ: '{anahtar_kelime}' -> {bulunan_sayi} adet ({ulke})")
                     
             except Exception as e:
                 print(f"⚠️ [Worker-{worker_id}] BAĞLANTI HATASI: {e}")
@@ -141,15 +144,50 @@ def platform_kaziyici_islem(worker_id, kuyruk):
 def bot_yoneticisi():
     gorev_kuyrugu = Queue()
     
+    # DÜNYA ÇAPINDA ÇOK DİLLİ ARAMA SORGULARI
     aranacak_sorgular = [
-        {"kelime": "işsizlik kriz", "kategori": "Genel Ekonomi 💰"},
-        {"kelime": "bitcoin kripto", "kategori": "Kripto & Finans 🪙"},
-        {"kelime": "yapay zeka yazılım", "kategori": "Yapay Zeka (AI) 🤖"},
-        {"kelime": "hastane doktor randevu", "kategori": "Sağlık & Psikoloji 🏥"},
-        {"kelime": "seçim meclis muhalefet", "kategori": "Siyaset 🏛️"},
-        {"kelime": "savaş silah ordu", "kategori": "Savunma & Çatışma ⚔️"},
-        {"kelime": "iklim deprem sel", "kategori": "İklim & Çevre 🌍"},
-        {"kelime": "üniversite eğitim sınav", "kategori": "Eğitim 📚"}
+        # Türkiye
+        {"kelime": "işsizlik kriz", "kategori": "Genel Ekonomi 💰", "ulke": "Türkiye", "region": "tr-tr"},
+        {"kelime": "hastane doktor randevu", "kategori": "Sağlık & Psikoloji 🏥", "ulke": "Türkiye", "region": "tr-tr"},
+        {"kelime": "seçim muhalefet", "kategori": "Siyaset 🏛️", "ulke": "Türkiye", "region": "tr-tr"},
+        
+        # ABD & İngiltere
+        {"kelime": "unemployment crisis", "kategori": "Genel Ekonomi 💰", "ulke": "ABD", "region": "us-en"},
+        {"kelime": "artificial intelligence software", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "ABD", "region": "us-en"},
+        {"kelime": "election parliament", "kategori": "Siyaset 🏛️", "ulke": "İngiltere", "region": "uk-en"},
+        {"kelime": "crypto bitcoin regulation", "kategori": "Kripto & Finans 🪙", "ulke": "İngiltere", "region": "uk-en"},
+        
+        # Almanya
+        {"kelime": "Arbeitslosigkeit Krise", "kategori": "Genel Ekonomi 💰", "ulke": "Almanya", "region": "de-de"},
+        {"kelime": "Künstliche Intelligenz", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "Almanya", "region": "de-de"},
+        
+        # Fransa
+        {"kelime": "crise économique", "kategori": "Genel Ekonomi 💰", "ulke": "Fransa", "region": "fr-fr"},
+        {"kelime": "changement climatique", "kategori": "İklim & Çevre 🌍", "ulke": "Fransa", "region": "fr-fr"},
+        
+        # Rusya
+        {"kelime": "экономический кризис", "kategori": "Genel Ekonomi 💰", "ulke": "Rusya", "region": "ru-ru"},
+        {"kelime": "искусственный интеллект", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "Rusya", "region": "ru-ru"},
+        
+        # Çin
+        {"kelime": "经济危机", "kategori": "Genel Ekonomi 💰", "ulke": "Çin", "region": "cn-zh"},
+        {"kelime": "人工智能", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "Çin", "region": "cn-zh"},
+        
+        # Japonya & Güney Kore
+        {"kelime": "経済危機", "kategori": "Genel Ekonomi 💰", "ulke": "Japonya", "region": "jp-jp"},
+        {"kelime": "인공지능", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "Güney Kore", "region": "kr-kr"},
+        
+        # İtalya & Brezilya
+        {"kelime": "crisi economica", "kategori": "Genel Ekonomi 💰", "ulke": "İtalya", "region": "it-it"},
+        {"kelime": "crise econômica", "kategori": "Genel Ekonomi 💰", "ulke": "Brezilya", "region": "br-pt"},
+        
+        # Hindistan
+        {"kelime": "stock market crash", "kategori": "Kripto & Finans 🪙", "ulke": "Hindistan", "region": "in-en"},
+        
+        # Mısır & Suudi Arabistan
+        {"kelime": "أزمة اقتصادية", "kategori": "Genel Ekonomi 💰", "ulke": "Mısır", "region": "eg-ar"},
+        {"kelime": "الذكاء الاصطناعي", "kategori": "Yapay Zeka (AI) 🤖", "ulke": "Suudi Arabistan", "region": "sa-ar"},
+        {"kelime": "حرب جيش", "kategori": "Savunma & Çatışma ⚔️", "ulke": "Suudi Arabistan", "region": "sa-ar"}
     ]
     
     hedef_platformlar = [
@@ -160,7 +198,13 @@ def bot_yoneticisi():
     while True:
         for platform in hedef_platformlar:
             for sorgu in aranacak_sorgular:
-                gorev_kuyrugu.put({"platform": platform, "kelime": sorgu["kelime"], "kategori": sorgu["kategori"]})
+                gorev_kuyrugu.put({
+                    "platform": platform, 
+                    "kelime": sorgu["kelime"], 
+                    "kategori": sorgu["kategori"],
+                    "ulke": sorgu["ulke"],
+                    "region": sorgu["region"]
+                })
                 
         WORKER_SAYISI = 2
         for i in range(WORKER_SAYISI):
