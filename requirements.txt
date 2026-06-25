@@ -2,3 +2,4 @@ Flask
 supabase
 ddgs
 pandas
+textblob
