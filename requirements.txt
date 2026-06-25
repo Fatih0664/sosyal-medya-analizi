@@ -3,3 +3,4 @@ supabase
 ddgs
 pandas
 textblob
+streamlit
