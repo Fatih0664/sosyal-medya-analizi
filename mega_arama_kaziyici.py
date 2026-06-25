@@ -8,10 +8,6 @@ from supabase import create_client
 from ddgs import DDGS
 from flask import Flask
 
-# Senin kütüphaneleri de hata vermesin diye ekliyoruz:
-import pandas as pd
-from textblob import TextBlob
-
 # --- FLASK WEB SUNUCUSU AYARLARI ---
 app = Flask(__name__)
 
@@ -28,7 +24,6 @@ os.environ["SUPABASE_KEY"] = SUPABASE_KEY
 
 PROXY_LISTESI = []
 
-# Supabase Bağlantısı (hata verse bile sunucuyu çökertmemesi için exit() kaldırıldı)
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     print("✅ Bulut veritabanı bağlantısı başarıyla kuruldu!")
@@ -85,12 +80,6 @@ DOMAIN_ESLESME = {
     "Telegram": ["t.me", "telegram.org"],
     "Instagram": ["instagram.com"],
     "TikTok": ["tiktok.com"]
-}
-
-hedef_platformlar = [
-    "Google", "Bing", "Yahoo", "Facebook", "YouTube", 
-    "WhatsApp", "X (Twitter)", "Telegram", "Instagram", "TikTok"
-] 
 }
 
 def platform_kaziyici_islem(worker_id, kuyruk):
@@ -153,7 +142,11 @@ def bot_yoneticisi():
         {"kelime": "iklim deprem sel", "kategori": "İklim & Çevre 🌍"},
         {"kelime": "üniversite eğitim sınav", "kategori": "Eğitim 📚"}
     ]
-    hedef_platformlar = ["Ekşi Sözlük", "DonanımHaber", "KızlarSoruyor", "Reddit Türkiye"]
+    
+    hedef_platformlar = [
+        "Google", "Bing", "Yahoo", "Facebook", "YouTube", 
+        "WhatsApp", "X (Twitter)", "Telegram", "Instagram", "TikTok"
+    ]
     
     while True:
         for platform in hedef_platformlar:
@@ -173,11 +166,9 @@ def bot_yoneticisi():
         time.sleep(1800)
 
 if __name__ == '__main__':
-    # 1. Arka plan botunu başlat (Kuyruk işlemleri)
     bot_thread = threading.Thread(target=bot_yoneticisi)
     bot_thread.daemon = True
     bot_thread.start()
     
-    # 2. Sahte web sunucusunu başlat (Render'ın portu açık görmesi için bu ŞART!)
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
