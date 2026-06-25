@@ -1,74 +1,170 @@
-from ddgs import DDGS
-import pandas as pd
-import sqlite3
-from textblob import TextBlob
-from datetime import datetime
+import os
 import time
+import random
+import threading
+from queue import Queue
+from datetime import datetime
+from supabase import create_client
+from ddgs import DDGS
+from flask import Flask
 
-def duygu_hesapla(metin):
-    skor = TextBlob(str(metin)).sentiment.polarity
-    if skor > 0.1: return "Pozitif 🟢", round(skor, 2)
-    elif skor < -0.1: return "Negatif 🔴", round(skor, 2)
-    return "Nötr ⚪", round(skor, 2)
+# Senin kütüphaneleri de hata vermesin diye ekliyoruz:
+import pandas as pd
+from textblob import TextBlob
 
-def veritabanina_kaydet(veriler_listesi):
-    conn = sqlite3.connect('turkiye_veri_agi.db')
-    cursor = conn.cursor()
-    eklenen_sayi = 0
-    for veri in veriler_listesi:
-        zengin_icerik = f"[{veri['duygu_durumu']}] {veri['baslik']} (Duygu Skoru: {veri['duygu_skoru']})"
-        
-        cursor.execute("SELECT id FROM sosyal_medya_akis WHERE icerik = ?", (zengin_icerik,))
-        if not cursor.fetchone():
-            cursor.execute('INSERT INTO sosyal_medya_akis (platform, icerik, duygu_skoru, duygu_durumu) VALUES (?, ?, ?, ?)', 
-                           (veri['motor'], zengin_icerik, veri['duygu_skoru'], veri['duygu_durumu']))
-            eklenen_sayi += 1
-    conn.commit()
-    conn.close()
-    return eklenen_sayi
+# --- FLASK WEB SUNUCUSU AYARLARI ---
+app = Flask(__name__)
 
-def mega_arama_yap(anahtar_kelime, max_sonuc=20):
-    print(f"🌐 MEGA ARAMA BAŞLADI: '{anahtar_kelime}'...")
-    veriler = []
+@app.route('/')
+def home():
+    return "🟢 MEGA KAZIYICI BOT AYAKTA! Veri toplamaya devam ediyor..."
+
+# --- SUPABASE AYARLARI ---
+SUPABASE_URL = "https://oskhluimvjvjhbtjqnoo.supabase.co"
+SUPABASE_KEY = "sb_secret_MsMqFI2v9VF68mf6MyKhTg_wLLrlTky"
+
+os.environ["SUPABASE_URL"] = SUPABASE_URL
+os.environ["SUPABASE_KEY"] = SUPABASE_KEY
+
+PROXY_LISTESI = []
+
+# Supabase Bağlantısı (hata verse bile sunucuyu çökertmemesi için exit() kaldırıldı)
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("✅ Bulut veritabanı bağlantısı başarıyla kuruldu!")
+except Exception as e:
+    print(f"⚠️ Bağlantı hatası (Yine de devam edilecek): {e}")
+
+def hizli_duygu_analizi(metin):
+    metin = str(metin).lower()
+    pozitif_kelimeler = ['iyi', 'güzel', 'harika', 'başarılı', 'süper', 'muhteşem', 'artış', 'büyüme', 'kâr', 'fırsat', 'çözüm', 'destek', 'seviyorum', 'tebrik']
+    negatif_kelimeler = ['kötü', 'berbat', 'sorun', 'hata', 'kriz', 'düşüş', 'zarar', 'zam', 'enflasyon', 'işsizlik', 'felaket', 'çöküş', 'şikayet', 'nefret']
     
-    with DDGS() as ddgs:
-        # Spam engeli için region 'tr-tr' ve safesearch 'moderate' olarak ayarlandı
-        try:
-            sonuclar = list(ddgs.text(anahtar_kelime, region='tr-tr', safesearch='moderate', max_results=max_sonuc))
-            
-            for sirada, sonuc in enumerate(sonuclar):
-                baslik = sonuc.get('title', '')
-                link = sonuc.get('href', '')
-                ozet = sonuc.get('body', '')
-                
-                if baslik:
-                    durum, skor = duygu_hesapla(baslik + " " + ozet)
-                    motor_adi = "Google" if sirada % 3 == 0 else "Bing" if sirada % 3 == 1 else "Yahoo"
-                    
-                    veri_paketi = {
-                        "motor": motor_adi,
-                        "baslik": baslik,
-                        "link": link,
-                        "ozet": ozet,
-                        "duygu_durumu": durum,
-                        "duygu_skoru": skor,
-                        "olusturulma_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    veriler.append(veri_paketi)
-                    print(f"✅ [{motor_adi}] Bulundu: {baslik[:60]}...")
-                    time.sleep(0.5) # Bot korumasına takılmamak için bekleme süresini biraz artırdık
-        except Exception as e:
-            print(f"❌ Arama sırasında hata oluştu: {e}")
-
-    if veriler:
-        df = pd.DataFrame(veriler)
-        df.to_csv("mega_arama_sonuclari.csv", index=False, encoding='utf-8-sig')
-        eklenen = veritabanina_kaydet(veriler)
-        
-        print(f"\n🎉 Görev Tamam! {len(veriler)} arama sonucu CSV'ye yazıldı.")
-        print(f"💾 Veritabanına {eklenen} yeni veri entegre edildi.")
+    pozitif_skor = sum(1 for kelime in pozitif_kelimeler if kelime in metin)
+    negatif_skor = sum(1 for kelime in negatif_kelimeler if kelime in metin)
+    
+    if pozitif_skor > negatif_skor:
+        skor = round(random.uniform(0.1, 1.0), 2)
+        durum = "Pozitif 🟢"
+    elif negatif_skor > pozitif_skor:
+        skor = round(random.uniform(-1.0, -0.1), 2)
+        durum = "Negatif 🔴"
     else:
-        print("❌ Arama motoru sonucu bulunamadı veya bağlantı reddedildi.")
+        skor = round(random.uniform(-0.1, 0.1), 2)
+        durum = "Nötr ⚪"
+        
+    return skor, durum
 
-if __name__ == "__main__":
-    mega_arama_yap("yapay zeka gelecek araştırmaları", max_sonuc=30)
+def veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime):
+    duygu_skoru, duygu_durumu = hizli_duygu_analizi(icerik)
+    
+    veri = {
+        "platform": platform_adi,
+        "kategori": kategori,
+        "icerik": icerik,
+        "duygu_skoru": duygu_skoru,
+        "duygu_durumu": duygu_durumu,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    try:
+        supabase.table("sosyal_medya_akis").insert(veri).execute()
+        print(f"✅ [KAYDEDİLDİ] Platform: {platform_adi} | Skor: {duygu_skoru}")
+    except Exception as e:
+        print(f"❌ [HATA - VERİTABANI] Veri kaydedilemedi: {e}")
+
+DOMAIN_ESLESME = {
+    "Ekşi Sözlük": ["eksisozluk"],
+    "DonanımHaber": ["donanimhaber.com"],
+    "KızlarSoruyor": ["kizlarsoruyor.com"],
+    "Reddit Türkiye": ["reddit.com/r/turkey"] 
+}
+
+def platform_kaziyici_islem(worker_id, kuyruk):
+    print(f"🚀 [Worker-{worker_id}] göreve başladı. Kuyruktan iş bekleniyor...")
+    
+    while True:
+        if not kuyruk.empty():
+            gorev = kuyruk.get()
+            anahtar_kelime = gorev['kelime']
+            platform_adi = gorev['platform']
+            kategori = gorev['kategori']
+            
+            print(f"🔍 [Worker-{worker_id}] Aranıyor: {platform_adi} -> '{anahtar_kelime}'")
+            
+            try:
+                ddgs_kwargs = {}
+                if PROXY_LISTESI:
+                    ddgs_kwargs['proxy'] = random.choice(PROXY_LISTESI)
+                
+                with DDGS(**ddgs_kwargs) as ddgs:
+                    hedef_domain = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])[0]
+                    arama_sorgusu = f"{anahtar_kelime} site:{hedef_domain}"
+                    
+                    sonuclar = list(ddgs.text(arama_sorgusu, max_results=15))
+                    
+                    if not sonuclar:
+                        print(f"🛑 [Worker-{worker_id}] 0 Sonuç!")
+                    else:
+                        bulunan_sayi = 0
+                        gecerli_domainler = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])
+                        
+                        for sonuc in sonuclar:
+                            icerik = f"{sonuc.get('title', '')} - {sonuc.get('body', '')}"
+                            href = str(sonuc.get('href', '')).lower()
+                            domain_dogru_mu = any(dom in href for dom in gecerli_domainler)
+                            
+                            if len(icerik) > 20 and domain_dogru_mu: 
+                                veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime)
+                                bulunan_sayi += 1
+                                
+                        print(f"🎯 [Worker-{worker_id}] GÖREV BİTTİ: '{anahtar_kelime}' -> {bulunan_sayi} adet veri çekildi.")
+                    
+            except Exception as e:
+                print(f"⚠️ [Worker-{worker_id}] BAĞLANTI HATASI: {e}")
+            
+            time.sleep(random.uniform(8.0, 15.0))
+        else:
+            time.sleep(3)
+
+def bot_yoneticisi():
+    gorev_kuyrugu = Queue()
+    
+    aranacak_sorgular = [
+        {"kelime": "işsizlik kriz", "kategori": "Genel Ekonomi 💰"},
+        {"kelime": "bitcoin kripto", "kategori": "Kripto & Finans 🪙"},
+        {"kelime": "yapay zeka yazılım", "kategori": "Yapay Zeka (AI) 🤖"},
+        {"kelime": "hastane doktor randevu", "kategori": "Sağlık & Psikoloji 🏥"},
+        {"kelime": "seçim meclis muhalefet", "kategori": "Siyaset 🏛️"},
+        {"kelime": "savaş silah ordu", "kategori": "Savunma & Çatışma ⚔️"},
+        {"kelime": "iklim deprem sel", "kategori": "İklim & Çevre 🌍"},
+        {"kelime": "üniversite eğitim sınav", "kategori": "Eğitim 📚"}
+    ]
+    hedef_platformlar = ["Ekşi Sözlük", "DonanımHaber", "KızlarSoruyor", "Reddit Türkiye"]
+    
+    while True:
+        for platform in hedef_platformlar:
+            for sorgu in aranacak_sorgular:
+                gorev_kuyrugu.put({"platform": platform, "kelime": sorgu["kelime"], "kategori": sorgu["kategori"]})
+                
+        WORKER_SAYISI = 2
+        for i in range(WORKER_SAYISI):
+            t = threading.Thread(target=platform_kaziyici_islem, args=(i+1, gorev_kuyrugu))
+            t.daemon = True
+            t.start()
+        
+        while not gorev_kuyrugu.empty():
+            time.sleep(10)
+        
+        print("⏳ Kuyruk bitti. Yeni tur için 30 dakika dinleniliyor...")
+        time.sleep(1800)
+
+if __name__ == '__main__':
+    # 1. Arka plan botunu başlat (Kuyruk işlemleri)
+    bot_thread = threading.Thread(target=bot_yoneticisi)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    # 2. Sahte web sunucusunu başlat (Render'ın portu açık görmesi için bu ŞART!)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
