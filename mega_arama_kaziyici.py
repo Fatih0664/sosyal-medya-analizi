@@ -100,13 +100,17 @@ def platform_kaziyici_islem(worker_id, kuyruk):
                     ddgs_kwargs['proxy'] = random.choice(PROXY_LISTESI)
                 
                 with DDGS(**ddgs_kwargs) as ddgs:
-                    hedef_domain = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])[0]
-                    arama_sorgusu = f"{anahtar_kelime} site:{hedef_domain}"
+                    # EĞER PLATFORM ARAMA MOTORUYSA 'site:' KISITLAMASI YAPMA!
+                    if platform_adi in ["Google", "Bing", "Yahoo"]:
+                        arama_sorgusu = f"{anahtar_kelime} haberler" 
+                    else:
+                        hedef_domain = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])[0]
+                        arama_sorgusu = f"{anahtar_kelime} site:{hedef_domain}"
                     
                     sonuclar = list(ddgs.text(arama_sorgusu, max_results=15))
                     
                     if not sonuclar:
-                        print(f"🛑 [Worker-{worker_id}] 0 Sonuç!")
+                        print(f"🛑 [Worker-{worker_id}] 0 Sonuç! ({platform_adi})")
                     else:
                         bulunan_sayi = 0
                         gecerli_domainler = DOMAIN_ESLESME.get(platform_adi, [platform_adi.lower()])
@@ -114,13 +118,18 @@ def platform_kaziyici_islem(worker_id, kuyruk):
                         for sonuc in sonuclar:
                             icerik = f"{sonuc.get('title', '')} - {sonuc.get('body', '')}"
                             href = str(sonuc.get('href', '')).lower()
-                            domain_dogru_mu = any(dom in href for dom in gecerli_domainler)
+                            
+                            # Arama motorları için her linki geçerli say
+                            if platform_adi in ["Google", "Bing", "Yahoo"]:
+                                domain_dogru_mu = True
+                            else:
+                                domain_dogru_mu = any(dom in href for dom in gecerli_domainler)
                             
                             if len(icerik) > 20 and domain_dogru_mu: 
                                 veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime)
                                 bulunan_sayi += 1
                                 
-                        print(f"🎯 [Worker-{worker_id}] GÖREV BİTTİ: '{anahtar_kelime}' -> {bulunan_sayi} adet veri çekildi.")
+                        print(f"🎯 [Worker-{worker_id}] GÖREV BİTTİ: '{anahtar_kelime}' -> {bulunan_sayi} adet veri çekildi. ({platform_adi})")
                     
             except Exception as e:
                 print(f"⚠️ [Worker-{worker_id}] BAĞLANTI HATASI: {e}")
