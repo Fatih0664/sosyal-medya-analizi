@@ -73,11 +73,24 @@ def veritabanina_yaz(platform_adi, kategori, icerik, anahtar_kelime):
     except Exception as e:
         print(f"❌ [HATA - VERİTABANI] Veri kaydedilemedi: {e}")
 
+# --- GERÇEK HEDEF PLATFORMLAR ---
 DOMAIN_ESLESME = {
-    "Ekşi Sözlük": ["eksisozluk"],
-    "DonanımHaber": ["donanimhaber.com"],
-    "KızlarSoruyor": ["kizlarsoruyor.com"],
-    "Reddit Türkiye": ["reddit.com/r/turkey"] 
+    "Google": ["google.com"],
+    "Bing": ["bing.com"],
+    "Yahoo": ["yahoo.com"],
+    "Facebook": ["facebook.com"],
+    "YouTube": ["youtube.com"],
+    "WhatsApp": ["whatsapp.com", "wa.me"],
+    "X (Twitter)": ["twitter.com", "x.com"],
+    "Telegram": ["t.me", "telegram.org"],
+    "Instagram": ["instagram.com"],
+    "TikTok": ["tiktok.com"]
+}
+
+hedef_platformlar = [
+    "Google", "Bing", "Yahoo", "Facebook", "YouTube", 
+    "WhatsApp", "X (Twitter)", "Telegram", "Instagram", "TikTok"
+] 
 }
 
 def platform_kaziyici_islem(worker_id, kuyruk):
